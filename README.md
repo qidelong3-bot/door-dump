@@ -18,6 +18,7 @@ OpenWrt 远程抓包系统。通过 HTTP 流式传输将路由器上的抓包数
 ## 环境要求
 
 - Go 1.21+
+- UPX（可选，用于压缩二进制）
 - OpenWrt 路由器（已安装 tcpdump）
 - 远程服务器（x86_64 Linux）
 
@@ -34,6 +35,9 @@ make build-cli      # 编译 CLI（当前平台）
 
 # 编译 Server 用于 Linux x86_64
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o door-server ./cmd/server
+
+# 压缩 Agent 二进制（推荐，6.3MB → 2.2MB）
+upx --best door-agent
 ```
 
 ## 部署
@@ -57,12 +61,11 @@ Server 参数：
 ### 2. 部署 Agent（OpenWrt 路由器）
 
 ```bash
-# 上传到路由器
-scp -o HostKeyAlgorithms=+ssh-rsa door-agent root@192.168.1.30:/tmp/
+# 方式1：使用 scp 旧协议
+scp -O -o HostKeyAlgorithms=+ssh-rsa door-agent root@192.168.1.30:/tmp/
 
-# SSH 到路由器设置权限
-ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.30
-chmod +x /tmp/door-agent
+# 方式2：使用 SSH 管道传输（推荐）
+cat door-agent | ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.30 "cat > /tmp/door-agent && chmod +x /tmp/door-agent"
 ```
 
 注意：Agent 放在 `/tmp`（tmpfs），路由器重启后需要重新部署。
@@ -72,6 +75,9 @@ chmod +x /tmp/door-agent
 ```bash
 # 部署 Agent 到路由器
 ./doorctl deploy --host 192.168.1.30 --password your-password --binary ./door-agent
+
+# 查看路由器网络接口
+./doorctl ifaces --host 192.168.1.30 --password your-password
 
 # 触发抓包
 ./doorctl capture --host 192.168.1.30 --password your-password \
@@ -90,11 +96,18 @@ chmod +x /tmp/door-agent
 /tmp/door-agent [options]
 
 参数：
-  -i string     网络接口 (默认 "br-lan")
-  -f string     BPF 过滤表达式 (如 "port 80" "host 192.168.1.1")
-  -d string     抓包时长 (如 "30s", "5m", "1h") (默认 "60s")
-  -s string     服务端 URL (必填，如 "http://your-server:8080")
+  -i string      网络接口 (默认 "br-lan")
+  -f string      BPF 过滤表达式 (如 "port 80" "host 192.168.1.1")
+  -d string      抓包时长 (如 "30s", "5m", "1h") (默认 "60s")
+  -s string      服务端 URL (必填，如 "http://your-server:8080")
   -device string 设备标识符 (可选)
+  -list          列出可用网络接口并退出
+```
+
+列出网络接口：
+
+```bash
+/tmp/door-agent -list
 ```
 
 示例：
