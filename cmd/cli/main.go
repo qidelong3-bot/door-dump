@@ -22,6 +22,8 @@ func main() {
 		deployCmd()
 	case "capture":
 		captureCmd()
+	case "ifaces":
+		ifacesCmd()
 	case "list":
 		listCmd()
 	case "download":
@@ -38,6 +40,7 @@ func printUsage() {
 Commands:
   deploy    Deploy agent binary to router
   capture   Start packet capture on router
+  ifaces    List network interfaces on router
   list      List captures on server
   download  Download capture from server`)
 }
@@ -110,6 +113,36 @@ func captureCmd() {
 		log.Fatalf("capture: %v", err)
 	}
 	fmt.Println("capture completed")
+}
+
+func ifacesCmd() {
+	fs := flag.NewFlagSet("ifaces", flag.ExitOnError)
+	host := fs.String("host", "", "router host")
+	port := fs.String("port", "22", "SSH port")
+	user := fs.String("user", "root", "SSH user")
+	password := fs.String("password", "", "SSH password")
+	fs.Parse(os.Args[2:])
+
+	if *host == "" {
+		log.Fatal("--host required")
+	}
+
+	client, err := cli.Connect(cli.SSHConfig{
+		Host:     *host,
+		Port:     *port,
+		User:     *user,
+		Password: *password,
+	})
+	if err != nil {
+		log.Fatalf("ssh connect: %v", err)
+	}
+	defer client.Close()
+
+	output, err := cli.Exec(client, "/tmp/door-agent -list")
+	if err != nil {
+		log.Fatalf("list interfaces: %v", err)
+	}
+	fmt.Print(output)
 }
 
 func listCmd() {

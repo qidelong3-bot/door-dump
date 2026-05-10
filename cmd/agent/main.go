@@ -18,7 +18,20 @@ func main() {
 	duration := flag.String("d", "60s", "capture duration (e.g. 30s, 5m)")
 	server := flag.String("s", "", "server URL for upload (e.g. https://capture.example.com)")
 	device := flag.String("device", "", "device identifier")
+	listIfaces := flag.Bool("list", false, "list available network interfaces and exit")
 	flag.Parse()
+
+	if *listIfaces {
+		ifaces, err := agent.ListInterfaces()
+		if err != nil {
+			log.Fatalf("list interfaces: %v", err)
+		}
+		fmt.Printf("%-16s %15s %15s\n", "INTERFACE", "RX_BYTES", "TX_BYTES")
+		for _, iface := range ifaces {
+			fmt.Printf("%-16s %15s %15s\n", iface.Name, iface.RxBytes, iface.TxBytes)
+		}
+		return
+	}
 
 	if *server == "" {
 		log.Fatal("server URL is required (-s)")
