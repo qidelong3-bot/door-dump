@@ -1,0 +1,13 @@
+# Binaries
+door-agent
+door-server
+doorctl
+agent
+server
+cli
+
+# Data
+data/
+
+# OS
+.DS_Store
